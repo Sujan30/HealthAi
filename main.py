@@ -9,12 +9,13 @@ import threading
 from dotenv import load_dotenv
 from google import genai
 from flask import Flask, request, jsonify
-
 from google.cloud import speech_v1p1beta1 as speech
-
+import regex as re
 
 
 app = Flask(__name__)  # Add Flask app initialization
+
+
 
 load_dotenv()
 
@@ -22,10 +23,6 @@ os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.getenv('GOOGLE_APPLICATION_CRE
 
 client = genai.Client(api_key=os.getenv("gemini_api_key"))
 
-response = client.models.generate_content(
-    model="gemini-2.0-flash",
-    contents="Explain how AI works",
-)
 
 
 
@@ -100,6 +97,9 @@ def transcribe():
     except Exception as e:
         return jsonify({'error': 'Error transcribing audio'}), 500
     
+"""
+
+  
 def main():
     
     sample_rate = 16000
@@ -121,16 +121,61 @@ def main():
     except Exception as e:
         print(f"Error: {e}")
     
+    #use the transcript to search for products
     finally:
         if os.path.exists(file_path):
             os.remove(file_path)
+        return transcript
     
+"""  
+
+def convert_to_speech(text):
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=text,
+    )
+    return response.text
+
+def search_products(pain_cause):
+    prompt = f"""
+    A user is experiencing {pain_cause}. Suggest 3 products that can help.
+    Provide:
+    Product name only. Seperate each product with a new line.
+    """
+
+    response = client.models.generate_content(
+        model="gemini-pro",
+        contents=prompt
+    )
     
+    return response.text
+
+def get_products(prompt):
+    response_text = search_products(prompt)
+    
+    # Check if response_text is None
+    if response_text is None:
+        print("Error: No response received from search_products.")
+        return []
+    
+    print("response text: ", response_text)
+    
+    # Split the response text by new lines to get individual product names
+    product_names = [line.strip() for line in response_text.split('\n') if line.strip()]
+    
+    return product_names
+
+# Example usage
+prompt = input("Enter your pain: ")
+product_names = get_products(prompt)
+print("Product Names: ", product_names)
 
 
 
-if __name__ == '__main__':
-    main()
+
+
+#if __name__ == '__main__':
+#    main()
 
       
     
