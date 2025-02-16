@@ -69,6 +69,16 @@ def transcribe_audio(audio_file_path):
 #using the prompt, look for keywords that the user is interested in that is health realated
 
 
+#currently uses  to generate the answer
+
+def generate_answer(prompt):
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=prompt,
+    )
+    return response.text
+
+
 
 @app.route('/transcribe', methods=['POST'])
 def transcribe():
@@ -105,7 +115,8 @@ def main():
             
         recorded_file = record_audio(sample_rate, duration, file_path)
         transcript = transcribe_audio(recorded_file)
-        print(f"Full Transcript: {transcript}")
+        print(f"Full Transcript of prompt: {transcript}")
+        print(f"Answer: {generate_answer(transcript)}")
         
     except Exception as e:
         print(f"Error: {e}")
