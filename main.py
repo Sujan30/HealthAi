@@ -15,12 +15,15 @@ from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import SecretStr
 import json
-
+from flask import Flask, request, jsonify
+from flask_cors import CORS  # Import CORS
 load_dotenv()
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.getenv(
     "GOOGLE_APPLICATION_CREDENTIALS"
 )
+
+app = Flask(__name__) 
 
 client = genai.Client(api_key=os.getenv("gemini_api_key"))
 
@@ -155,5 +158,41 @@ async def main():
             os.remove(unique_filename)
 
 
+@app.route('/transcribe', methods=['POST'])
+async def transcribe():
+    if 'audio' not in request.files:
+        return jsonify({'error': 'No audio file provided'}), 400
+
+    audio_file = request.files['audio']
+    unique_filename = f"{uuid.uuid4()}.wav"
+    audio_dir = "audio_files"
+    if not os.path.exists(audio_dir):
+        os.makedirs(audio_dir)
+    audio_file_path = os.path.join(audio_dir, unique_filename)
+
+    audio_file.save(audio_file_path)
+
+    try:
+        loop = asyncio.get_running_loop()
+        transcript = await loop.run_in_executor(None, transcribe_audio, audio_file_path)
+        answer = await loop.run_in_executor(None, generate_answer, transcript)
+
+        web_agent_result = await web_agent(answer)  # Await web_agent
+
+        return jsonify({
+            'transcription': transcript,
+            'answer': answer,
+            'web_agent_result': web_agent_result
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if os.path.exists(audio_file_path):
+            os.remove(audio_file_path)
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    app.run(debug=True)  # Development server only
+
+
