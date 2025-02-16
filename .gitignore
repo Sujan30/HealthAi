@@ -1,0 +1,8 @@
+# Ignore environment variables file
+.env
+
+# Ignore service account key file
+service_account_key.json
+
+# Ignore virtual environment directory
+venv/
